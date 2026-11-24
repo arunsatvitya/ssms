@@ -5,7 +5,7 @@
 ## 1. ไฟล์ต้นทาง
 
 - ต้นฉบับ: `../v3-compact/Code.gs` (Apps Script, 5,400 บรรทัด, ฟังก์ชันแบบ sync)
-- เป้าหมาย: `functions/_lib/*.js` (Cloudflare Pages Functions, ES modules, **async**)
+- เป้าหมาย: `src/lib/*.js` (Cloudflare Worker, ES modules, **async**)
 
 ## 2. กฎเหล็ก 3 ข้อ
 
@@ -25,7 +25,7 @@
 ## 3. Data Layer API (`_lib/db.js`)
 
 ```js
-import { loadSheets, readTable, readKeyValue, writeKeyValue, upsertRows,
+import { readTable, readKeyValue, writeKeyValue, upsertRows,
          deleteRowsByKey, updateCellByKey, countRows, readRowsByDate,
          readRowsByDateRange } from './db.js';
 

@@ -13,7 +13,7 @@
 
 $Root = Split-Path -Parent $PSScriptRoot
 $SchemaPath = Join-Path $Root 'schema\001_schema.sql'
-$ConstPath = Join-Path $Root 'functions\_lib\constants.js'
+$ConstPath = Join-Path $Root 'src\lib\constants.js'
 
 $errors = @()
 

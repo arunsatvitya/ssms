@@ -15,7 +15,7 @@
 
 $ErrorActionPreference = 'Continue'
 $Root = Split-Path -Parent $PSScriptRoot
-$Funcs = Join-Path $Root 'functions'
+$Funcs = Join-Path $Root 'src'
 $Orig = Join-Path (Split-Path -Parent $Root) 'v3-compact\Code.gs'
 
 $script:Errors = @()
@@ -192,9 +192,9 @@ function Get-JsFiles {
 # 2. API routes
 # ---------------------------------------------------------------------------
 function Test-Routes {
-    $routePath = Join-Path $Funcs '_lib\routes.js'
+    $routePath = Join-Path $Funcs 'lib\routes.js'
     if (-not (Test-Path $routePath)) {
-        Write-Err 'ไม่พบ functions/_lib/routes.js'
+        Write-Err 'ไม่พบ src/lib/routes.js'
         return
     }
     $src = [System.IO.File]::ReadAllText($routePath)
@@ -323,7 +323,7 @@ function Test-Constants {
         return
     }
     $origSrc = [System.IO.File]::ReadAllText($Orig)
-    $newSrc = [System.IO.File]::ReadAllText((Join-Path $Funcs '_lib\constants.js'))
+    $newSrc = [System.IO.File]::ReadAllText((Join-Path $Funcs 'lib\constants.js'))
     $names = @('ROLE_PERMISSIONS','ID_FIELDS','ANIMATIONS','MONITOR_TEMPLATES','LEAVE_TYPES',
                'CLASS_TYPES','GRADE_GROUPS_GENERAL','GRADE_GROUPS_RELIGIOUS','COMPACT_CODE_',
                'Jawi_STATUS','THAI_STATUS')
@@ -363,7 +363,7 @@ function Test-ThaiStrings {
 
     # ไฟล์เหล่านี้เป็นของใหม่ทั้งหมด - ข้อความในไฟล์เหล่านี้จึงไม่ต้อง
     # ตรงกับต้นฉบับ (เป็นข้อความของ Cloudflare)
-    $newFiles = @('[[path]].js', 'migrate.js', 'handler.js', 'index.js')
+    $newFiles = @('worker.js', 'migrate.js', 'handler.js')
 
     $unknown = @()
     $total = 0
@@ -398,7 +398,7 @@ function Test-Frontend {
     if ($src -notmatch "API_BASE\s*=\s*'/api'") {
         Write-Warn 'ไม่พบการตั้งค่า API_BASE = /api'
     }
-    $routePath = Join-Path $Funcs '_lib\routes.js'
+    $routePath = Join-Path $Funcs 'lib\routes.js'
     if (Test-Path $routePath) {
         $rsrc = [System.IO.File]::ReadAllText($routePath)
         $defined = [regex]::Matches($rsrc, "'([a-zA-Z][\w.]*)'\s*:") | ForEach-Object { $_.Groups[1].Value }
