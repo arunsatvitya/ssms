@@ -2474,6 +2474,16 @@ body.monitor-only .toast-container{display:none !important}
                   <span class="badge-soft" style="background:#e7f8f0;color:var(--c-emerald)">เชื่อมต่อแล้ว</span></div>
                 <div style="font-size:.82rem;color:var(--muted)" id="sheetInfo">-</div>
                 <button class="btn btn-ghost btn-sm mt-2" id="btnOpenSheet"><i class="bi bi-box-arrow-up-right me-1"></i>เปิดหน้าตั้งค่าระบบ</button>
+                <hr class="my-2">
+                <div class="fw-600" style="font-size:.85rem">ย้ายข้อมูลจากระบบเดิม</div>
+                <div class="form-text" style="font-size:.76rem">อัปโหลดไฟล์ JSON ที่ส่งออกจาก Google Sheets เพื่อนำเข้าข้อมูลเดิม</div>
+                <input type="file" id="importLegacyFile" accept=".json,application/json" class="d-none">
+                <div class="input-group input-group-sm mt-2">
+                  <input type="password" id="importLegacyKey" class="form-control" placeholder="คีย์นำเข้าข้อมูล">
+                  <button class="btn btn-soft" id="btnPickLegacyFile" type="button">เลือกไฟล์</button>
+                  <button class="btn btn-primary" id="btnImportLegacy" type="button">นำเข้า</button>
+                </div>
+                <div id="importLegacyStatus" class="mt-1" style="font-size:.78rem"></div>
               </div>
             </div>
           </div>
@@ -6387,6 +6397,47 @@ function initEvents() {
     const url = this.dataset.url;
     if (url && /^https?:/i.test(url)) { window.open(url, '_blank', 'noopener'); return; }
     toastErr('ฐานข้อมูล Cloudflare D1 ถูกจัดการผ่านแผงควบคุมของ Cloudflare');
+  });
+
+  // --- นำเข้าข้อมูลจากระบบเดิม (ไฟล์ JSON ที่ส่งออกจาก Google Sheets) ---
+  $('#btnPickLegacyFile').addEventListener('click', function () {
+    $('#importLegacyFile').click();
+  });
+  $('#importLegacyFile').addEventListener('change', function () {
+    const f = this.files && this.files[0];
+    const status = $('#importLegacyStatus');
+    if (!f) { status.textContent = ''; return; }
+    status.textContent = 'เลือกไฟล์: ' + f.name;
+  });
+  $('#btnImportLegacy').addEventListener('click', function () {
+    const f = $('#importLegacyFile').files && $('#importLegacyFile').files[0];
+    const key = $('#importLegacyKey').value.trim();
+    const status = $('#importLegacyStatus');
+    if (!f) { status.textContent = 'กรุณาเลือกไฟล์ JSON ก่อน'; return; }
+    if (!key) { status.textContent = 'กรุณากรอกคีย์นำเข้าข้อมูล'; return; }
+    status.textContent = 'กำลังอ่านไฟล์...';
+    f.text().then(function (text) {
+      var data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        status.textContent = 'อ่านไฟล์ไม่สำเร็จ - ต้องเป็นไฟล์ JSON ที่ส่งออกจากระบบเดิม';
+        return;
+      }
+      status.textContent = 'กำลังนำเข้าข้อมูล...';
+      return apiCall('database.importLegacy', { key: key, data: data })
+        .then(function (res) {
+          var report = (res && res.report) || {};
+          var total = 0;
+          Object.keys(report).forEach(function (k) {
+            if (report[k] && report[k].imported) total += report[k].imported;
+          });
+          status.textContent = 'นำเข้าสำเร็จ ' + total + ' แถว - กรุณาโหลดหน้าใหม่';
+          toastOk('นำเข้าข้อมูลสำเร็จ ' + total + ' แถว');
+        });
+    }).catch(function (err) {
+      status.textContent = 'นำเข้าไม่สำเร็จ: ' + ((err && err.message) || 'เกิดข้อผิดพลาด');
+    });
   });
   $('#btnSaveClassTeacher').addEventListener('click', function () {
     const classId = $('#setClassTeacher').value;

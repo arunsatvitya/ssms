@@ -65,8 +65,9 @@ export const API_ROUTES = {
   'leaves.stats': (ctx, p) => attendance.leaveStats_(ctx, p),
   'attendance.delete': (ctx, p) => attendance.deleteAttendance_(ctx, p),
   'database.usage': (ctx, p) => auth.databaseUsage_(ctx, p),
-  'database.migrate': (ctx, p) => migrate.importLegacyData_(ctx, p),
+  'database.migrate': (ctx, p) => migrate.migrateLegacyAttendance_(ctx, p),
 
+  'database.importLegacy': (ctx, p) => migrate.importLegacyData_(ctx, p),
   'anomalies.list': (ctx, p) => attendance.listAnomalies_(ctx, p),
   'anomalies.verify': (ctx, p) => attendance.verifyAnomaly_(ctx, p),
 

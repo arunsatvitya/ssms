@@ -125,15 +125,39 @@
    | ช่อง | ค่า |
    |---|---|
    | **Framework preset** | `None` |
-   | **Build command** | `npx wrangler pages deploy public` |
+   | **Build command** | `exit 0` |
    | **Build output directory** | `public` |
+   | **Root directory** | *(ดูหมายเหตุด้านล่าง)* |
 
-   > คำสั่ง build นี้จะเอาไฟล์จาก `public/` ไปวางไว้ และ Pages จะจัดการ
-   > โฟลเดอร์ `functions/` ให้เองโดยอัตโนมัติ
+   > **ทำไม build command เป็น `exit 0`?**
+   > เว็บนี้ไม่ต้อง "build" อะไรเลย (เป็น HTML ธรรมดา) และ Cloudflare จะ
+   > **compile โฟลเดอร์ `functions/` ให้เองโดยอัตโนมัติ** เมื่อใช้ Git integration
+   > (ตามคำแนะนำทางการของ Cloudflare: *"Cloudflare recommends using `exit 0`
+   > as your Build command to access features such as Pages Functions"*)
+   >
+   > ❌ **อย่าใช้** `npx wrangler pages deploy public` เป็น build command
+   > คำสั่งนั้นเป็นวิธีของ *Direct Upload* และจะล้มเหลวด้วย
+   > `Authentication error [code: 10000]` เพราะ build environment ไม่มี
+   > API Token ที่มีสิทธิ์ Pages:Edit
+
+   > **Root directory**
+   > โฟลเดอร์ `functions/` ต้องอยู่ที่ **รากของ repository** (ไม่ใช่ซ่อนอยู่ใน
+   > subfolder) เพราะ Cloudflare มองหาโฟลเดอร์นี้ที่รากเสมอ
+   > - ถ้าคุณอัปโหลด **เนื้อหา** ของ `v4-cloudflare/` ไว้ที่ราก repository
+   >   (มี `public/` และ `functions/` อยู่ระดับเดียวกัน) → **เว้น Root directory ว่าง**
+   > - ถ้าคุณอัปโหลดทั้งโฟลเดอร์ `v4-cloudflare/` ไว้ใน repository → ตั้ง
+   >   **Root directory** = `v4-cloudflare`
 
 6. กด **Save and Deploy**
 7. รอสัก 2-5 นาที จนขึ้นข้อความว่า **Deployment successful**
 8. จะได้ที่อยู่เว็บ เช่น `https://ssms-school.pages.dev` — **จดไว้**
+
+
+> 💡 **ทำไมมีไฟล์ `public/_routes.json`?**
+> ไฟล์นี้บอก Cloudflare ว่า "เรียก Function เฉพาะเส้นทาง `/api` เท่านั้น"
+> ที่เหลือ (หน้าเว็บ, CSS, รูป) เป็น static asset ซึ่ง **ฟรีและไม่จำกัด**
+> ถ้าไม่มีไฟล์นี้ ทุก request (รวมที่เปิดหน้าเว็บ) จะไปเรียก Function
+> และกินโควตา 100,000 request/วันของ Workers ไปเปล่าๆ
 
 ### ขั้นตอนที่ 5 — ผูกฐานข้อมูล D1 กับโปรเจกต์
 
@@ -217,7 +241,7 @@ npx wrangler login
 
 # สร้างฐานข้อมูล D1 (ถ้ายังไม่ได้สร้างในขั้นตอนที่ 2)
 npx wrangler d1 create ssms
-#    -> จะได้ database_id กลับมา�า ให้แก้ใน wrangler.toml
+#    -> จะได้ database_id กลับมา ให้จดไว้
 
 # สร้างตารางทั้งหมด
 npx wrangler d1 execute ssms --file=./schema/001_schema.sql --remote
@@ -230,13 +254,19 @@ npx wrangler pages secret put IMPORT_KEY
 npx wrangler pages deploy public
 ```
 
-### 4.3 ผูกฐานข้อมูล D1
+### 4.3 ผูกฐานข้อมูล D1 (เฉพาะวิธีใช้ Wrangler)
 
-แก้ไฟล์ `wrangler.toml` ให้ `database_id` ตรงกับของคุณ แล้วรัน:
+วิธีนี้ต้องมีไฟล์ `wrangler.toml` ที่รากโปรเจกต์ เพื่อบอกว่า D1 ตัวไหนถูกใช้
+มีตัวอย่างเตรียมไว้ใน `docs/wrangler.example.toml` — คัดลอกมาแล้วแก้ `database_id`
 
 ```powershell
+copy docs\wrangler.example.toml wrangler.toml
+# แก้ database_id ในไฟล์ wrangler.toml ให้เป็นของคุณ แล้ว deploy อีกครั้ง
 npx wrangler pages deploy public
 ```
+
+> 💡 ถ้าใช้วิธีของขั้นตอนที่ 3 (Git integration) **ไม่ต้องมีไฟล์นี้**
+> เพราะจะผูกฐานข้อมูลผ่านหน้า Settings ในหน้าเว็บ Cloudflare แทน
 
 ---
 
@@ -265,16 +295,10 @@ npx wrangler pages deploy public
 
 ### 5.2 นำเข้าข้อมูลเข้า D1
 
-**วิธีที่ 1 — ผ่านคำสั่ง (ง่ายที่สุด)**
+**วิธีที่ 1 — ผ่าน API โดยตรง (แนะนำ)**
 
-```powershell
-# แก้ไฟล์ import-data.js ให้ชี้ไปยังเว็บและคีย์ของคุณ
-npx wrangler d1 execute ssms --remote --file=./tools/migrate/import-data.sql
-```
-
-**วิธีที่ 2 — ผ่าน API โดยตรง**
-
-เปิด PowerShell แล้วรัน (แก้ URL และ KEY ให้เป็นของคุณ):
+เปิด PowerShell ในโฟลเดอร์ที่มีไฟล์ JSON แล้วรัน
+(แก้ URL และ KEY ให้เป็นของคุณ):
 
 ```powershell
 $body = Get-Content .\ssms_export_20261124_180000.json -Raw | ConvertFrom-Json
@@ -290,12 +314,18 @@ Invoke-RestMethod -Uri "https://ssms-school.pages.dev/api" `
   -Method Post -ContentType "application/json" -Body $payload
 ```
 
-**วิธีที่ 3 — ผ่านหน้าเว็บ**
+ผลลัพธ์จะเป็น JSON ที่บอกว่านำเข้ากี่แถว ของแต่ละตาราง
+
+**วิธีที่ 2 — ผ่านหน้าเว็บ**
 
 1. เข้าสู่ระบบเว็บใหม่
 2. ไปที่หน้า **ตั้งค่าระบบ** → หัวข้อ **ฐานข้อมูล**
 3. กด **นำเข้าข้อมูลจากระบบเดิม** → อัปโหลดไฟล์ `.json`
 4. พิมพ์คีย์นำเข้าข้อมูล → กด **นำเข้า**
+
+> 💡 ข้อมูลการเข้าเรียนรูปแบบเก่า (ชีต `Attendance_Homeroom` / `Religious` /
+> `General` ที่เก็บทีละนักเรียน) จะถูก**แปลงเป็นรูปแบบบีบอัดให้อัตโนมัติ**
+> ระบบเดิมใช้รูปแบบบีบอัดอยู่แล้ว จึงไม่ต้องทำอะไรเพิ่ม
 
 ### 5.3 ตรวจสอบผล
 
@@ -364,8 +394,37 @@ Invoke-RestMethod -Uri "https://ssms-school.pages.dev/api" `
 **แก้:** D1 → `ssms` → แท็บ **Console** → วางเนื้อหาไฟล์
 `schema/001_schema.sql` → กด **Execute**
 
-### ❌ เข้าสู่ระบบไม่ได้ — "ไม่พบผู้ใช้งานนี้ในระบบ"
+### ❌ Deploy ล้มเหลว — "Authentication error [code: 10000]"
 
+**อาการ** (จากหน้า Deployments):
+```
+✘ [ERROR] A request to the Cloudflare API (/accounts/xxx/pages/projects/ssms) failed.
+  Authentication error [code: 10000]
+  📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
+```
+
+**สาเหตุ:** ตั้ง **Build command** เป็น `npx wrangler pages deploy public`
+คำสั่งนี้เป็นวิธีของ *Direct Upload* ไม่ใช่ Git integration — ตัว build
+environment ของ Cloudflare ไม่มี API Token ที่มีสิทธิ์ Pages:Edit จึงถูกปฏิเสธ
+
+**แก้:** เปลี่ยน Build command เป็น `exit 0` แล้ว deploy ใหม่
+
+| ช่อง | ค่าที่ถูกต้อง |
+|---|---|
+| Framework preset | `None` |
+| **Build command** | **`exit 0`** |
+| Build output directory | `public` |
+
+> เมื่อใช้ `exit 0` Cloudflare จะ compile โฟลเดอร์ `functions/` ให้เองโดยอัตโนมัติ
+> ไม่ต้องเรียก wrangler เอง
+
+**ถ้ายังไม่ได้** แปลว่ามีอีกเรื่องหนึ่ง — ให้ตรวจ:
+1. **Root directory** ตรงกับโครงสร้าง repository ไหม
+   (ดูหัวข้อ 3 ขั้นตอนที่ 4)
+2. โฟลเดอร์ `functions/` อยู่ที่ราก repository หรือไม่
+   (ถ้าซ่อนอยู่ใน subfolder Cloudflare จะมองไม่เจอ → API จะไม่ทำงาน)
+
+### ❌ เข้าสู่ระบบไม่ได้ — "ไม่พบผู้ใช้งานนี้ในระบบ"
 **สาเหตุ:** ฐานข้อมูลยังไม่มีบัญชีเริ่มต้น (มักเกิดเมื่อยังไม่ได้สร้างตาราง)
 
 **แก้:** เปิด `https://ssms-school.pages.dev/api/health`
@@ -429,21 +488,25 @@ npx wrangler d1 execute ssms --remote --command "SELECT name FROM sqlite_master 
 ```
 v4-cloudflare/
 ├── public/
-│   └── index.html              หน้าเว็บ (เหมือนเดิมทุกประการ)
+│   ├── index.html              หน้าเว็บ (เหมือนเดิมทุกประการ)
+│   └── _routes.json            กำกับว่า request ไหนต้องผ่าน Function
 │
 ├── functions/                  Pages Functions
 │   ├── api/
-│   │   └── [[path]].js         ตัวรับคำสั่งทั้งหมด (POST /api)
+│   │   ├── index.js            ตัวรับ POST /api
+│   │   └── [[path]].js         ตัวรับ /api/* (รวม /api/health)
 │   └── _lib/
 │       ├── constants.js        ค่าคงที่ทั้งหมด (เหมือนเดิม)
 │       ├── util.js             Utilities/CacheService ของ Apps Script
 │       ├── db.js               ชั้นเชื่อมต่อฐานข้อมูล D1
 │       ├── context.js          สิ่งที่ทุก handler ใช้
+│       ├── handler.js          ตัวรับ request จริง
 │       ├── routes.js           ตารางเส้นทาง API
 │       ├── auth.js             เข้าสู่ระบบ ผู้ใช้ ตั้งค่า Audit
 │       ├── directory.js        นักเรียน ครู ห้องเรียน วิชา
 │       ├── roster.js           รายชื่อนักเรียนในห้อง (ข้อมูลแบบบีบอัด)
-│       ├── attendance.js       เช็คชื่อ สถิติ โดดเรียน การลา
+│       ├── attendance.js       เช็คชื่อ สถิติ โดดเรียน
+│       ├── leaves.js           การลาครู
 │       ├── reports.js          ประกาศ จอมอนิเตอร์ แดชบอร์ด รายงาน Excel
 │       └── migrate.js          นำเข้าข้อมูลจากระบบเดิม
 │
@@ -459,9 +522,9 @@ v4-cloudflare/
 │   └── verify.py / fix-await.sh  รุ่นสำรองสำหรับเครื่องที่มี Python / bash
 │
 ├── docs/
-│   └── PORTING-CONTRACT.md     สัญญาการพอร์ต (สำหรับผู้พัฒนา)
+│   ├── PORTING-CONTRACT.md     สัญญาการพอร์ต (สำหรับผู้พัฒนา)
+│   └── wrangler.example.toml   ตัวอย่างไฟล์ตั้งค่า Wrangler (สำหรับวิธีข้อ 4)
 │
-├── wrangler.toml               ค่าตั้งของ Wrangler
 └── README.md                   คู่มือนี้
 ```
 

@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import { SHEETS, ROUNDS, ROUND_SHEET } from './constants.js';
+import { SHEETS, HEADERS, ROUNDS, ROUND_SHEET } from './constants.js';
 import { readTable, upsertRows } from './db.js';
 import { error_, now_ } from './util.js';
 
@@ -91,7 +91,7 @@ export async function importLegacyData_(ctx, payload) {
   }
 
   // ถ้ามีข้อมูลการเข้าเรียนรูปแบบเก่า ให้แปลงเป็นรูปแบบบีบอัด
-  const legacy = await migrateLegacyAttendance_(ctx, sheets);
+  const legacy = await convertLegacyAttendance_(ctx, sheets);
   if (legacy) report.legacyConverted = legacy;
 
   // ล้าง cache เพราะข้อมูลเปลี่ยนทั้งหมด
@@ -110,7 +110,7 @@ export async function importLegacyData_(ctx, payload) {
  *
  * @returns {Promise<Object|null>} - สรุปจำนวนแถวที่แปลง หรือ null ถ้าไม่มีข้อมูลเก่า
  */
-async function migrateLegacyAttendance_(ctx, sheets) {
+async function convertLegacyAttendance_(ctx, sheets) {
   const legacyNames = [SHEETS.ATT_HOMEROOM, SHEETS.ATT_RELIGIOUS, SHEETS.ATT_GENERAL];
   let hasLegacy = false;
   legacyNames.forEach((n) => {
@@ -242,4 +242,52 @@ async function migrateLegacyAttendance_(ctx, sheets) {
   }
 
   return { groups: converted, rosters: rosterRows.length };
+}
+
+/**
+ * ย้ายข้อมูลการเข้าเรียนที่ยังอยู่ในรูปแบบเก่า (ทีละนักเรียน) ไปเป็นรูปแบบบีบอัด
+ *
+ * นี่คือฟังก์ชันที่ปุ่ม "ย้ายข้อมูล" ในหน้าตั้งค่าระบบเรียกใช้
+ * ข้อมูลถูกอ่านจากตารางเก่าในฐานข้อมูล แล้วเขียนกลับเป็นรูปแบบใหม่
+ * แถวที่มีอยู่แล้วจะไม่ถูกเขียนทับ (เหมือนต้นฉบับ)
+ *
+ * @param {Object} ctx
+ * @param {Object} payload
+ * @returns {Promise<Object>} - สรุปผลการย้ายข้อมูล
+ */
+export async function migrateLegacyAttendance_(ctx, payload) {
+  await ctx.requirePermission(payload.token, 'settings.manage');
+
+  // อ่านข้อมูลเก่าจากฐานข้อมูล
+  const sheets = {};
+  const legacyNames = [SHEETS.ATT_HOMEROOM, SHEETS.ATT_RELIGIOUS, SHEETS.ATT_GENERAL];
+  let legacyCount = 0;
+  for (const name of legacyNames) {
+    const rows = await readTable(ctx.d1, name);
+    legacyCount += rows.length;
+    sheets[name] = { headers: HEADERS[name] || [], rows: rows };
+  }
+
+  if (!legacyCount) {
+    return { days: 0, skipped: 0, verifications: 0, message: 'ไม่มีข้อมูลรูปแบบเก่าที่ต้องย้าย' };
+  }
+
+  const before = await readTable(ctx.d1, SHEETS.ATT_DAILY);
+  const result = await convertLegacyAttendance_(ctx, sheets);
+  const after = await readTable(ctx.d1, SHEETS.ATT_DAILY);
+
+  const verifications = await readTable(ctx.d1, SHEETS.ANOMALY_VERIFICATIONS);
+  await ctx.logAudit({
+    action: 'MIGRATE_LEGACY_ATTENDANCE',
+    entity: 'Attendance',
+    details: 'ย้าย ' + (result ? result.groups : 0) + ' กลุ่มข้อมูล'
+  });
+
+  return {
+    days: after.length - before.length,
+    skipped: before.length,
+    verifications: verifications.length,
+    groups: result ? result.groups : 0,
+    rosters: result ? result.rosters : 0
+  };
 }

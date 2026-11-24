@@ -363,7 +363,7 @@ function Test-ThaiStrings {
 
     # ไฟล์เหล่านี้เป็นของใหม่ทั้งหมด - ข้อความในไฟล์เหล่านี้จึงไม่ต้อง
     # ตรงกับต้นฉบับ (เป็นข้อความของ Cloudflare)
-    $newFiles = @('[[path]].js', 'migrate.js')
+    $newFiles = @('[[path]].js', 'migrate.js', 'handler.js', 'index.js')
 
     $unknown = @()
     $total = 0

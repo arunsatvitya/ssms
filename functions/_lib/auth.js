@@ -323,22 +323,29 @@ export async function systemSetup_(ctx, payload) {
  * console or `wrangler d1 execute`). This function only fills the database
  * with the default settings and the first accounts when it is still empty.
  *
- * It runs on every request but costs almost nothing: one small query decides
- * whether there is anything to do.
+ * The flag "the database is ready" is kept in the edge cache, so a normal
+ * request does not have to ask the database at all. Only the first request
+ * after the cache expired (one hour) reads the flag from D1.
  *
  * @param {Object} ctx
  * @returns {Promise<boolean>} - true when something was written
  */
 export async function ensureDatabase_(ctx) {
-  // The version of the schema is remembered in app_meta. When it is already
-  // in place there is nothing to do at all.
+  // The fast path: the cache says the database is ready.
+  const cached = await ctx.cacheGet('db_ready', 3600);
+  if (cached === '1') return false;
+
+  // The slow path: ask the database once.
   let seeded = '';
   try {
     seeded = await ctx.meta.get('schemaVersion');
   } catch (err) {
     seeded = '';
   }
-  if (seeded === APP.SCHEMA_VERSION) return false;
+  if (seeded === APP.SCHEMA_VERSION) {
+    await ctx.cachePut('db_ready', '1', 3600);
+    return false;
+  }
 
   const users = await readTable(ctx.d1, SHEETS.USERS);
   if (!users.length) {
@@ -349,6 +356,7 @@ export async function ensureDatabase_(ctx) {
   } catch (err) {
     /* the meta table is a nicety - the setup must not fail because of it */
   }
+  await ctx.cachePut('db_ready', '1', 3600);
   return true;
 }
 
