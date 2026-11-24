@@ -36,7 +36,7 @@
 | ฐานข้อมูล | Google Sheets (18 ชีต) | **Cloudflare D1** (SQLite, 18 ตาราง) |
 | ค่าใช้จ่าย | ฟรี (ตามโควตาของ Google) | **ฟรี** (ตามโควตาของ Cloudflare) |
 
-```
+``
 ผู้ใช้งาน (เบราว์เวอร์ / จอมอนิเตอร์)
         │
         │  index.html  (หน้าเดียวเหมือนเดิมทุกประการ)
@@ -62,7 +62,7 @@
 │   teacher_leaves · announcements · settings   │
 │   monitor_settings · audit_logs · sessions    │
 └──────────────────────────────────────────────┘
-```
+``
 
 ---
 
@@ -127,7 +127,17 @@
    | **Framework preset** | `None` |
    | **Build command** | `exit 0` |
    | **Build output directory** | `public` |
+   | **Deploy command** | *(เว้นว่าง — ล้างทิ้ง! ดูหมายเหตุด้านล่าง)* |
    | **Root directory** | *(ดูหมายเหตุด้านล่าง)* |
+
+   > 🔴 **สำคัญ — ฟิลด์ "Deploy command" ต้องเว้นว่าง**
+   > ถ้าฟิลด์นี้มีค่า `npx wrangler deploy` (หรืออะไรก็ตาม) ให้**ลบออกให้หมด**
+   > คำสั่งนั้นเป็นของ **Workers** ไม่ใช่ Pages และจะทำให้ deploy ล้มเหลวด้วย
+   > ``
+   > ✘ [ERROR] Missing entry-point to Worker script or to assets directory
+   > ``
+   > Pages ที่เชื่อมกับ Git จะ**เผยแพร่ไฟล์ที่ build ออกมาให้เอง** ไม่ต้องมีขั้นตอน
+   > deploy เพิ่มเติม
 
    > **ทำไม build command เป็น `exit 0`?**
    > เว็บนี้ไม่ต้อง "build" อะไรเลย (เป็น HTML ธรรมดา) และ Cloudflare จะ
@@ -139,7 +149,7 @@
    > คำสั่งนั้นเป็นวิธีของ *Direct Upload* และจะล้มเหลวด้วย
    > `Authentication error [code: 10000]` เพราะ build environment ไม่มี
    > API Token ที่มีสิทธิ์ Pages:Edit
-
+   >
    > **Root directory**
    > โฟลเดอร์ `functions/` ต้องอยู่ที่ **รากของ repository** (ไม่ใช่ซ่อนอยู่ใน
    > subfolder) เพราะ Cloudflare มองหาโฟลเดอร์นี้ที่รากเสมอ
@@ -147,6 +157,7 @@
    >   (มี `public/` และ `functions/` อยู่ระดับเดียวกัน) → **เว้น Root directory ว่าง**
    > - ถ้าคุณอัปโหลดทั้งโฟลเดอร์ `v4-cloudflare/` ไว้ใน repository → ตั้ง
    >   **Root directory** = `v4-cloudflare`
+   > (ถ้าต้องการ deploy เองจริงๆ ให้ใช้ `npx wrangler pages deploy public` ไม่ใช่ `wrangler deploy`)
 
 6. กด **Save and Deploy**
 7. รอสัก 2-5 นาที จนขึ้นข้อความว่า **Deployment successful**
@@ -188,13 +199,13 @@
 
 เปิดในเบราว์เวอร์:
 
-```
+``
 https://ssms-school.pages.dev/api/health
-```
+``
 
 จะเห็นผลลัพธ์แบบนี้ (ถ้าได้ แปลว่าทุกอย่างเชื่อมต่อถูกต้อง):
 
-```json
+``json
 {
   "ok": true,
   "data": {
@@ -203,7 +214,7 @@ https://ssms-school.pages.dev/api/health
     "users": 2
   }
 }
-```
+``
 
 จากนั้นเปิด `https://ssms-school.pages.dev` จะเห็นหน้าเข้าสู่ระบบ
 
@@ -226,14 +237,14 @@ https://ssms-school.pages.dev/api/health
 
 1. ดาวน์โหลดจาก [nodejs.org](https://nodejs.org) (เลือกเวอร์ชัน **LTS**)
 2. ติดตั้งแล้วเปิด PowerShell ใหม่ พิมพ์:
-   ```powershell
+   ``powershell
    node -v
-   ```
+   ``
    ถ้าเห็นเลขเวอร์ชัน แปลว่าสำเร็จ
 
 ### 4.2 ติดตั้งและ deploy
 
-```powershell
+``powershell
 cd "D:\ปอเนาะปายอ\แจ้งขึ้นจอ Minimax\v4-cloudflare"
 
 # เข้าสู่ระบบ Cloudflare (เปิดเบราว์เวอร์ขึ้นมายืนยันตัวตน)
@@ -252,18 +263,18 @@ npx wrangler pages secret put IMPORT_KEY
 
 # deploy
 npx wrangler pages deploy public
-```
+``
 
 ### 4.3 ผูกฐานข้อมูล D1 (เฉพาะวิธีใช้ Wrangler)
 
 วิธีนี้ต้องมีไฟล์ `wrangler.toml` ที่รากโปรเจกต์ เพื่อบอกว่า D1 ตัวไหนถูกใช้
 มีตัวอย่างเตรียมไว้ใน `docs/wrangler.example.toml` — คัดลอกมาแล้วแก้ `database_id`
 
-```powershell
+``powershell
 copy docs\wrangler.example.toml wrangler.toml
 # แก้ database_id ในไฟล์ wrangler.toml ให้เป็นของคุณ แล้ว deploy อีกครั้ง
 npx wrangler pages deploy public
-```
+``
 
 > 💡 ถ้าใช้วิธีของขั้นตอนที่ 3 (Git integration) **ไม่ต้องมีไฟล์นี้**
 > เพราะจะผูกฐานข้อมูลผ่านหน้า Settings ในหน้าเว็บ Cloudflare แทน
@@ -282,10 +293,10 @@ npx wrangler pages deploy public
 3. เปิดไฟล์ `tools/migrate/export-from-sheets.gs` จากเครื่องคุณ
    แล้วคัดลอกทั้งไฟล์มาวาง (ทับไฟล์ว่าง)
 4. แก้ 2 บรรทัดบนสุดของไฟล์ให้ถูกต้อง:
-   ```javascript
+   ``javascript
    var SSMS_API_URL = 'https://ssms-school.pages.dev';   // ที่อยู่เว็บของคุณ
    var SSMS_API_KEY = 'Ssm-2026-@x7Kp';                   // คีย์ที่ตั้งในขั้นตอนที่ 6
-   ```
+   ``
 5. กด **Save** (💾) แล้วกด **Run** ที่ฟังก์ชัน **exportSheetsJson**
 6. Google จะขออนุญาต (ครั้งแรก) — กด **Review permissions** → เลือกบัญชี
    → **Advanced** → **Go to ExportData (unsafe)** → **Allow**
@@ -300,7 +311,7 @@ npx wrangler pages deploy public
 เปิด PowerShell ในโฟลเดอร์ที่มีไฟล์ JSON แล้วรัน
 (แก้ URL และ KEY ให้เป็นของคุณ):
 
-```powershell
+``powershell
 $body = Get-Content .\ssms_export_20261124_180000.json -Raw | ConvertFrom-Json
 $payload = @{
   action  = "database.importLegacy"
@@ -312,7 +323,7 @@ $payload = @{
 
 Invoke-RestMethod -Uri "https://ssms-school.pages.dev/api" `
   -Method Post -ContentType "application/json" -Body $payload
-```
+``
 
 ผลลัพธ์จะเป็น JSON ที่บอกว่านำเข้ากี่แถว ของแต่ละตาราง
 
@@ -396,12 +407,39 @@ Invoke-RestMethod -Uri "https://ssms-school.pages.dev/api" `
 
 ### ❌ Deploy ล้มเหลว — "Authentication error [code: 10000]"
 
+### ❌ Deploy ล้มเหลว — "Missing entry-point to Worker script or to assets directory"
+
 **อาการ** (จากหน้า Deployments):
 ```
+▲ [WARNING] It seems that you have run `wrangler deploy` on a Pages project, `wrangler pages deploy` should be used instead.
+✘ [ERROR] Missing entry-point to Worker script or to assets directory
+```
+
+**สาเหตุ:** ฟิลด์ **Deploy command** ในหน้าตั้งค่ายังมีค่า `npx wrangler deploy`
+คำสั่งนี้เป็นของ **Workers** ไม่ใช่ Pages (Pages ต้องใช้ `wrangler pages deploy`)
+
+**แก้:** Pages → โปรเจกต์ → **Settings** → **Builds & deployments**
+→ ล้างฟิลด์ **Deploy command** ให้ว่างเปล่า → **Save and Deploy**
+
+> Pages ที่เชื่อมกับ Git จะเผยแพร่ไฟล์ที่ build ออกมาให้เองโดยอัตโนมัติ
+> ไม่ต้องมีขั้นตอน deploy เพิ่มเติม
+
+**ตารางค่าที่ถูกต้อง (ครบทุกช่อง):**
+
+| ช่อง | ค่า |
+|---|---|
+| Framework preset | `None` |
+| Build command | `exit 0` |
+| Build output directory | `public` |
+| **Deploy command** | **เว้นว่าง (ล้างทิ้ง)** |
+| Root directory | ว่าง หรือ `v4-cloudflare` (ตามโครงสร้าง repo) |
+
+**อาการ** (จากหน้า Deployments):
+``
 ✘ [ERROR] A request to the Cloudflare API (/accounts/xxx/pages/projects/ssms) failed.
   Authentication error [code: 10000]
   📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
-```
+``
 
 **สาเหตุ:** ตั้ง **Build command** เป็น `npx wrangler pages deploy public`
 คำสั่งนี้เป็นวิธีของ *Direct Upload* ไม่ใช่ Git integration — ตัว build
@@ -430,10 +468,10 @@ environment ของ Cloudflare ไม่มี API Token ที่มีสิ
 **แก้:** เปิด `https://ssms-school.pages.dev/api/health`
 - ถ้า `users` เป็น `0` ให้ลองเปิดหน้าเว็บหลัก 1 ครั้ง (ระบบจะสร้างบัญชีเริ่มต้นให้อัตโนมัติ)
 - ถ้ายังไม่ได้ ให้รันใน D1 Console:
-  ```sql
+  ``sql
   INSERT INTO users (user_id, username, password_hash, salt, full_name, role, status, created_at, updated_at)
   VALUES ('USR-0001', 'admin', 'ดูค่าด้านล่าง', 'salt123', 'ผู้ดูแลระบบ', 'SUPER_ADMIN', 'ACTIVE', '', '');
-  ```
+  ``
   แล้วใช้หน้า *เปลี่ยนรหัสผ่าน* เพื่อตั้งรหัสใหม่
 
 ### ❌ หน้าจอมอนิเตอร์ขึ้น "ไม่สามารถโหลดข้อมูลได้"
@@ -454,13 +492,13 @@ environment ของ Cloudflare ไม่มี API Token ที่มีสิ
 
 ### ✅ ตรวจสอบว่าทุกอย่างทำงาน
 
-```powershell
+``powershell
 # ตรวจสอบ API
 curl https://ssms-school.pages.dev/api/health
 
 # ตรวจสอบตารางในฐานข้อมูล
 npx wrangler d1 execute ssms --remote --command "SELECT name FROM sqlite_master WHERE type='table'"
-```
+``
 
 ---
 
@@ -485,7 +523,7 @@ npx wrangler d1 execute ssms --remote --command "SELECT name FROM sqlite_master 
 
 ## โครงสร้างไฟล์ในโฟลเดอร์นี้
 
-```
+``
 v4-cloudflare/
 ├── public/
 │   ├── index.html              หน้าเว็บ (เหมือนเดิมทุกประการ)
@@ -526,17 +564,17 @@ v4-cloudflare/
 │   └── wrangler.example.toml   ตัวอย่างไฟล์ตั้งค่า Wrangler (สำหรับวิธีข้อ 4)
 │
 └── README.md                   คู่มือนี้
-```
+``
 
 ### ตรวจสอบโค้ดก่อน deploy
 
-```powershell
+``powershell
 # ตรวจวงเล็บ, action ที่ครบ, ฟังก์ชันที่หาย, ค่าคงที่ และข้อความภาษาไทย
 powershell -ExecutionPolicy Bypass -File tools\verify.ps1
 
 # ตรวจว่าคอลัมน์ในโค้ดตรงกับตารางในฐานข้อมูล
 powershell -ExecutionPolicy Bypass -File tools\check-schema.ps1
-```
+``
 
 ผลที่คาดหวัง: **ผ่านทั้งหมด** ทุกครั้ง
 
